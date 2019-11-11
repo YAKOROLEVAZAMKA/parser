@@ -1,0 +1,87 @@
+import numpy as np
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup 
+import re
+
+# библиотеки
+
+url = 'http://www.statdata.ru/largest_regions_russia'
+page = requests.get(url)
+soup = BeautifulSoup(page.text, 'html.parser')
+raw_data = soup.findAll('td', attrs=None)
+
+# получение "сырой" информации
+
+data_strip = str(raw_data).split('/div></div></td>,')[1].split(', <td style="width:362px;height:267px"><img alt=')[0]
+
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px;vertical-align:bottom;font-family:Arial;text-align:right"', '')
+
+for i in range(86):
+    rep = '<td style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom">' + str(i) + '</td>'
+    data_strip = data_strip.replace(rep, '')
+
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;color:#c53929;text-align:right"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;color:#0b8043;text-align:right"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px;vertical-align:bottom;font-family:Arial;color:rgb(197,57,41);text-align:right"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px;vertical-align:bottom;font-family:Arial;color:rgb(197,57,41);text-align:right"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;text-align:right"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom"', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;text-align:right', '')
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px 2px 3px;vertical-align:bottom;text-align:right', '')
+
+data_strip = data_strip.replace(' style="overflow:hidden;padding:2px 3px;vertical-align:bottom;font-family:Arial;color:rgb(11,128,67);text-align:right"', '')
+
+data_strip = data_strip.replace(' <td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">№</td>, ', '')
+data_strip = data_strip.replace('<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">Субъект России</td>, ', '')
+data_strip = data_strip.replace('<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">на 1 января 2019</td>, ', '')
+data_strip = data_strip.replace('<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">на 1 января 2018</td>, ', '')
+data_strip = data_strip.replace('td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">общий прирост</td>, ', '')
+data_strip = data_strip.replace('<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">Общ.<br/>%</td>, ', '')
+data_strip = data_strip.replace('<<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">естестве<br/>нный</td>, ', '')
+data_strip = data_strip.replace('<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom;text-align:center">миграци<br/>онный</td>, ', '')
+data_strip = data_strip.replace('<td style="overflow:hidden;padding:2px 3px;vertical-align:bottom">% от<br/>\xa0РФ</td>, <td></td>, ', '')
+
+data_strip = data_strip.replace("<b>", '')
+data_strip = data_strip.replace("</b>", '')
+data_strip = data_strip.replace(", ", '')
+data_strip = data_strip.replace("<i>", '')
+data_strip = data_strip.replace("</i>", '')
+data_strip = data_strip.replace("</td>", '')
+
+# удаление мусора
+
+data = data_strip.split('<td>')
+data = [x for x in data if x]
+
+# создание списка
+
+def conv(s):
+    s = s.replace(' ', '')
+    return float(s)
+
+# функция для удаления пробелов и пробразования строки в float
+
+statdata = []
+for i in range(0, len(data), 8):
+    region_name = data[i]
+    year2019 = int((data[i + 1]).replace(' ',''))
+    year2018 = int((data[i + 2]).replace(' ',''))
+    total_increase = int((data[i + 3]).replace(' ',''))
+    total_percent = conv(data[i + 4])
+    natural =conv(data[i + 5])
+    migrational = int((data[i + 6]).replace(' ',''))
+    percent_rf = conv(data[i + 7])
+    everything = (region_name, year2019, year2018, total_increase, total_percent, natural,
+                 migrational, percent_rf)
+    statdata.append(everything)
+    
+# создание списка кортежей из списка
+
+df2 = pd.DataFrame(statdata)
+
+real_columns = ['Subject_RF', '01.01.2019', '01.01.2019', 'TotalGrowth', 'Total %', 'NaturalGrowth', 'Migratory', 'RF %']
+df2.columns = real_columns
+
+# создание DataFrame из списка кортежей, переименование столбцов

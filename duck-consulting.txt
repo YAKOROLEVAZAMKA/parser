@@ -1,0 +1,83 @@
+import numpy as np
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup 
+import re
+import copy
+
+years = ['2017', '2018', '2019']
+year2017 = []
+year2018 = []
+year2019 = []
+k = 2017
+
+
+for y in years:
+    url = 'https://russia.duck.consulting/maps/31/' + y
+    page = requests.get(url)
+    soup = BeautifulSoup(page.text, 'html.parser')
+    
+    raw_data = soup.findAll('table',{'class':'table table-hover'})
+    data_strip = str(raw_data).split('<tbody>')[1].split('</tbody>')[0]
+    data_strip2 = data_strip.replace('\n','')
+    
+    
+    for i in range(101):
+        temp = ' href="/regions/' + str(i) + '" style="color: black"'
+        data_strip2 = data_strip2.replace(temp,'')
+
+    while True:
+        t1 = data_strip2.find(' style="white-space')
+        if t1 == -1:
+            break
+        t2 = data_strip2.find('width: 95px"')
+        temp = data_strip2[t1: t2 + 12]
+        data_strip2 = data_strip2.replace(temp, '')
+        
+        
+    data_strip2 = data_strip2.replace('<a>','')
+    data_strip2 = data_strip2.replace('</a>','')
+    data_strip2 = data_strip2.replace('<tr>','')
+    data_strip2 = data_strip2.replace('</tr>','')
+    data_strip2 = data_strip2.replace('</td>','')
+    
+    data = data_strip2.split('<td>')
+    data = [x for x in data if x]
+    
+    
+    for i in range(len(data)):
+        data[i] = data[i].strip()
+        
+    stat_data = []
+
+    for j in range(0, len(data), 3):
+        rank = int(data[j])
+        region_name = data[j + 1]
+        people = int(data[j + 2].replace(' ',''))
+        everything = (rank, region_name, people)
+        stat_data.append(everything)
+        
+    if k == 2017:
+        year2017 = copy.deepcopy(stat_data)
+        k += 1
+    elif k == 2018:
+        year2018 = copy.deepcopy(stat_data)
+        k += 1
+    elif k == 2019:
+        year2019 = copy.deepcopy(stat_data)
+        k += 1
+
+
+real_columns = ['N', 'RegionName', 'People']
+
+df2017 = pd.DataFrame(year2017)
+df2017.columns = real_columns
+df2017['year'] = 2017
+
+df2018 = pd.DataFrame(year2018)
+df2018.columns = real_columns
+df2018['year'] = 2018
+
+df2019 = pd.DataFrame(year2019)
+df2019.columns = real_columns
+df2019['year'] = 2019
